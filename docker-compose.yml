@@ -37,6 +37,7 @@ services:
       - DATABASE_URL=postgresql://coderenew:coderenew_dev_password@db:5432/coderenew
       - SECRET_KEY=your-secret-key-change-in-production
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
       - UPLOAD_DIR=/app/uploads

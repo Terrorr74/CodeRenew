@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # Anthropic Claude API
     ANTHROPIC_API_KEY: str
 
+    # Stripe
+    STRIPE_SECRET_KEY: str
+
     # File Upload
     UPLOAD_DIR: str = "./uploads"
     MAX_UPLOAD_SIZE: int = 52428800  # 50MB

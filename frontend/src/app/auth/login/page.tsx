@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LoginForm } from '@/components/forms/LoginForm'
+import { authApi } from '@/lib/api/auth'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -11,13 +12,12 @@ export default function LoginPage() {
 
   const handleLogin = async (data: { email: string; password: string }) => {
     try {
-      // TODO: Implement actual login logic
-      console.log('Login attempt:', data)
-
-      // Temporary redirect
+      setError(null)
+      await authApi.login(data)
       router.push('/dashboard')
-    } catch (err) {
-      setError('Login failed. Please check your credentials.')
+    } catch (err: any) {
+      console.error('Login error:', err)
+      setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
     }
   }
 

@@ -30,15 +30,36 @@ class WordPressScanner:
         Returns:
             List of detected issues
         """
-        # TODO: Implement file scanning logic
-        # 1. Read file contents
-        # 2. Parse PHP code
-        # 3. Detect deprecated functions, hooks, etc.
-        # 4. Use Claude API for advanced analysis
-        # 5. Return structured results
-
-        issues = []
-        return issues
+        all_issues = []
+        
+        # For now, we'll scan files one by one. 
+        # In production, we might want to batch them or concatenate related files.
+        for file_path in file_paths:
+            if not file_path.exists() or not file_path.suffix == '.php':
+                continue
+                
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+                    
+                # Skip empty files
+                if not content.strip():
+                    continue
+                    
+                # Analyze with Claude
+                analysis = await self.analyze_with_claude(content)
+                
+                # Add file context to issues
+                file_issues = analysis.get('issues', [])
+                for issue in file_issues:
+                    issue['file'] = file_path.name
+                    issue['file_path'] = str(file_path)
+                    all_issues.append(issue)
+                    
+            except Exception as e:
+                print(f"Error scanning file {file_path}: {e}")
+                
+        return all_issues
 
     async def analyze_with_claude(self, code: str) -> Dict[str, Any]:
         """
@@ -50,13 +71,14 @@ class WordPressScanner:
         Returns:
             Analysis results from Claude
         """
-        # TODO: Implement Claude API integration
-        # 1. Format prompt with code and version information
-        # 2. Call Claude API
-        # 3. Parse response
-        # 4. Return structured analysis
-
-        return {}
+        from app.services.claude.client import ClaudeClient
+        
+        client = ClaudeClient()
+        return await client.analyze_code(
+            code=code,
+            version_from=self.version_from,
+            version_to=self.version_to
+        )
 
     def calculate_risk_level(self, issues: List[Dict[str, Any]]) -> str:
         """
@@ -66,9 +88,17 @@ class WordPressScanner:
             issues: List of detected issues
 
         Returns:
-            Risk level: low, medium, high, critical
+            Risk level: safe, warning, critical
         """
-        # TODO: Implement risk calculation logic
-        # Based on severity and count of issues
-
-        return "low"
+        if not issues:
+            return "safe"
+            
+        critical_count = sum(1 for i in issues if i.get('severity') == 'critical')
+        high_count = sum(1 for i in issues if i.get('severity') == 'high')
+        
+        if critical_count > 0:
+            return "critical"
+        if high_count > 0:
+            return "warning"
+            
+        return "safe"

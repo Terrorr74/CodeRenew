@@ -11,8 +11,10 @@ from app.schemas.order import OrderCreate, OrderResponse, OrderListResponse
 
 router = APIRouter()
 
+from app.core.config import settings
+
 # Initialize Stripe
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 @router.post("/", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)

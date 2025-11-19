@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { RegisterForm } from '@/components/forms/RegisterForm'
+import { authApi } from '@/lib/api/auth'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -11,13 +12,13 @@ export default function RegisterPage() {
 
   const handleRegister = async (data: { email: string; password: string }) => {
     try {
-      // TODO: Implement actual registration logic
-      console.log('Registration attempt:', data)
-
-      // Temporary redirect
-      router.push('/auth/login')
-    } catch (err) {
-      setError('Registration failed. Please try again.')
+      setError(null)
+      await authApi.register(data)
+      // Auto login after register or redirect to login
+      router.push('/auth/login?registered=true')
+    } catch (err: any) {
+      console.error('Registration error:', err)
+      setError(err.response?.data?.detail || 'Registration failed. Please try again.')
     }
   }
 
