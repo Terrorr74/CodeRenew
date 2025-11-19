@@ -20,7 +20,7 @@ export default function ProblemSolution() {
                 Fear of Breaking Client Sites
               </h3>
               <p className="text-gray-600">
-                That sinking feeling when you click "Update" and hope nothing breaks. One bad update can cost you a client relationship.
+                That sinking feeling when you click &ldquo;Update&rdquo; and hope nothing breaks. One bad update can cost you a client relationship.
               </p>
             </div>
 
@@ -40,7 +40,7 @@ export default function ProblemSolution() {
                 Emergency 3 AM Fixes
               </h3>
               <p className="text-gray-600">
-                White screens, broken checkout pages, angry client emails. You're stuck fixing issues that could have been prevented.
+                White screens, broken checkout pages, angry client emails. You&apos;re stuck fixing issues that could have been prevented.
               </p>
             </div>
           </div>
@@ -50,7 +50,7 @@ export default function ProblemSolution() {
         <div>
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              There's a Better Way
+              There&apos;s a Better Way
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               CodeRenew uses AI to analyze compatibility before you update - giving you confidence and peace of mind.
@@ -90,7 +90,7 @@ export default function ProblemSolution() {
                     Confidence Scores
                   </h3>
                   <p className="text-gray-600">
-                    Get clear, easy-to-understand confidence scores for each update. Know exactly what's safe and what needs attention.
+                    Get clear, easy-to-understand confidence scores for each update. Know exactly what&apos;s safe and what needs attention.
                   </p>
                 </div>
               </div>

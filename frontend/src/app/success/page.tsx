@@ -35,11 +35,11 @@ export default function SuccessPage() {
               </li>
               <li className="flex gap-3">
                 <span className="flex-shrink-0 font-semibold text-blue-600">2.</span>
-                <span>You'll receive a confirmation email with your order details</span>
+                <span>You&apos;ll receive a confirmation email with your order details</span>
               </li>
               <li className="flex gap-3">
                 <span className="flex-shrink-0 font-semibold text-blue-600">3.</span>
-                <span>Within 24 hours, we'll email you a comprehensive compatibility report</span>
+                <span>Within 24 hours, we&apos;ll email you a comprehensive compatibility report</span>
               </li>
               <li className="flex gap-3">
                 <span className="flex-shrink-0 font-semibold text-blue-600">4.</span>
@@ -56,13 +56,13 @@ export default function SuccessPage() {
                 <svg className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
-                <span>Check your spam folder if you don't see our emails within an hour</span>
+                <span>Check your spam folder if you don&apos;t see our emails within an hour</span>
               </li>
               <li className="flex items-start gap-2">
                 <svg className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
-                <span>Questions? Email us at support@coderenew.com - we're here to help!</span>
+                <span>Questions? Email us at support@coderenew.com - we&apos;re here to help!</span>
               </li>
               <li className="flex items-start gap-2">
                 <svg className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">

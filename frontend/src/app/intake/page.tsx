@@ -135,7 +135,7 @@ function IntakeFormContent() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Payment Successful!</h1>
-              <p className="text-gray-600">Now let's get your site analysis started.</p>
+              <p className="text-gray-600">Now let&apos;s get your site analysis started.</p>
             </div>
           </div>
         </div>
@@ -176,7 +176,7 @@ function IntakeFormContent() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="you@agency.com"
               />
-              <p className="text-sm text-gray-500 mt-1">We'll send your analysis report to this email</p>
+              <p className="text-sm text-gray-500 mt-1">We&apos;ll send your analysis report to this email</p>
             </div>
 
             {/* Site Info */}

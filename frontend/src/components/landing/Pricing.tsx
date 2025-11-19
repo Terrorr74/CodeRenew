@@ -112,7 +112,7 @@ export default function Pricing() {
                   </svg>
                   <div>
                     <p className="font-semibold text-gray-900">Email Support</p>
-                    <p className="text-sm text-gray-600">Questions about your report? We're here to help</p>
+                    <p className="text-sm text-gray-600">Questions about your report? We&apos;re here to help</p>
                   </div>
                 </div>
               </div>
@@ -148,7 +148,7 @@ export default function Pricing() {
                 <span className="font-semibold">100% Satisfaction Guarantee</span>
               </div>
               <p className="text-center text-sm text-gray-600 mt-2">
-                Not happy with your analysis? We'll refund you, no questions asked.
+                Not happy with your analysis? We&apos;ll refund you, no questions asked.
               </p>
             </div>
           </div>
