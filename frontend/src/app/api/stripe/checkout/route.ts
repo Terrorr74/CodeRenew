@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe, STRIPE_CONFIG } from '@/lib/stripe';
+import { getStripeServer, STRIPE_CONFIG } from '@/lib/stripe';
 
 export async function POST(req: NextRequest) {
   try {
+    const stripe = getStripeServer();
     const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     // Create Stripe Checkout Session
