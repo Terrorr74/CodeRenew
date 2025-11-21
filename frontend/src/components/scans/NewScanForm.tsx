@@ -27,8 +27,8 @@ export function NewScanForm() {
     useEffect(() => {
         const fetchSites = async () => {
             try {
-                const response = await apiClient.get<Site[]>('/sites')
-                setSites(response.data)
+                const sites = await apiClient.get<Site[]>('/sites')
+                setSites(sites)
             } catch (err) {
                 console.error('Failed to fetch sites', err)
             }
@@ -54,12 +54,12 @@ export function NewScanForm() {
         data.append('wordpress_version_to', formData.versionTo)
 
         try {
-            const response = await apiClient.post('/scans/upload', data, {
+            const response = await apiClient.post<{ id: number }>('/scans/upload', data, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
             })
-            router.push(`/scans/${response.data.id}`)
+            router.push(`/scans/${response.id}`)
         } catch (err: any) {
             if (err.response?.status === 403) {
                 setShowUpgradeModal(true)

@@ -31,19 +31,22 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </Link>
 
             <nav className="hidden md:flex space-x-6">
-              {navigation.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${pathname === item.href
-                    ? 'bg-primary-50 text-primary-700 font-medium'
-                    : 'text-secondary-600 hover:bg-secondary-100'
-                    }`}
-                >
-                  <span>{item.icon}</span>
-                  <span>{item.name}</span>
-                </Link>
-              ))}
+              {navigation.map((item) => {
+                const Icon = item.icon
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${pathname === item.href
+                      ? 'bg-primary-50 text-primary-700 font-medium'
+                      : 'text-secondary-600 hover:bg-secondary-100'
+                      }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span>{item.name}</span>
+                  </Link>
+                )
+              })}
             </nav>
 
             <div className="flex items-center space-x-4">
