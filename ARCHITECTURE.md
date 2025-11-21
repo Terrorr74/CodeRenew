@@ -1,8 +1,8 @@
 # CodeRenew - System Architecture
 
-**Last Updated**: 2025-11-18
-**Version**: 1.0
-**Status**: Initial Architecture
+**Last Updated**: 2025-11-21
+**Version**: 1.1
+**Status**: Active Development
 
 ---
 
@@ -19,6 +19,7 @@
 9. [AI Integration](#ai-integration)
 10. [Deployment Architecture](#deployment-architecture)
 11. [Scalability Considerations](#scalability-considerations)
+12. [Related Documentation](#related-documentation)
 
 ---
 
@@ -207,6 +208,10 @@ backend/
 │   │   ├── scan.py               # Scan model
 │   │   └── scan_result.py        # ScanResult model
 │   │
+│   ├── middleware/               # Custom middleware
+│   │   ├── logging.py            # Request logging
+│   │   └── rate_limit.py         # Rate limiting
+│   │
 │   ├── schemas/                  # Pydantic schemas (validation)
 │   │   ├── user.py               # User schemas
 │   │   ├── site.py               # Site schemas
@@ -235,8 +240,11 @@ backend/
 │       │   ├── extractor.py      # ZIP extraction
 │       │   └── validator.py      # File validation
 │       │
-│       └── report/               # Report generation
-│           └── generator.py      # PDF/HTML reports
+│       ├── reporting/            # Report generation
+│       │   └── generator.py      # PDF/HTML reports
+│       │
+│       └── email.py              # Email service
+
 ```
 
 ---
@@ -1091,6 +1099,9 @@ main
 
 Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`
 
+> [!TIP]
+> For detailed setup and contribution guidelines, please refer to [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ---
 
 ## Testing Strategy
@@ -1153,6 +1164,16 @@ test('complete scan workflow', async ({ page }) => {
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-11-18
-**Next Review**: After MVP Phase 1 completion
+## Related Documentation
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Development setup and guidelines
+- [BACKEND_TEST_PLAN.md](BACKEND_TEST_PLAN.md) - Backend testing strategy
+- [FRONTEND_TEST_PLAN.md](FRONTEND_TEST_PLAN.md) - Frontend testing strategy
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Deployment guide
+- [SECURITY_IMPLEMENTATION_SUMMARY.md](SECURITY_IMPLEMENTATION_SUMMARY.md) - Security details
+
+---
+
+**Document Version**: 1.1
+**Last Updated**: 2025-11-21
+**Next Review**: After Sprint 2 completion

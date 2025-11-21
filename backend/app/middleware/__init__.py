@@ -1,1 +1,3 @@
-# Middleware for request processing
+"""
+Middleware modules for FastAPI application
+"""

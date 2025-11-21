@@ -3,7 +3,7 @@ Scans endpoints
 WordPress compatibility scanning operations
 """
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, UploadFile, File, Form, Response
 from sqlalchemy.orm import Session
 from datetime import datetime
 import shutil
@@ -13,13 +13,16 @@ import zipfile
 
 from app.core.config import settings
 from app.db.session import get_db
-from app.api.dependencies import get_current_user
+from app.db.session import get_db
+from app.api.dependencies import get_current_user, check_scan_limits
 from app.schemas.scan import ScanCreate, ScanResponse
 from app.models.user import User
 from app.models.site import Site
 from app.models.scan import Scan, ScanStatus
 from app.models.scan_result import ScanResult
 from app.services.wordpress.scanner import WordPressScanner
+from app.services.reporting.pdf_generator import PDFReportGenerator
+from app.services.email import send_scan_complete_email
 
 router = APIRouter()
 
@@ -87,6 +90,19 @@ async def process_scan(scan_id: int, db: Session):
         scan.completed_at = datetime.utcnow()
         db.commit()
         
+        # Send email notification
+        try:
+            user = db.query(User).filter(User.id == scan.user_id).first()
+            if user:
+                send_scan_complete_email(
+                    email_to=user.email,
+                    scan_id=scan.id,
+                    risk_level=scan.risk_level.value if scan.risk_level else "unknown",
+                    issue_count=len(issues)
+                )
+        except Exception as e:
+            print(f"Failed to send email: {e}")
+        
         # Cleanup
         # shutil.rmtree(scan_dir)
         
@@ -103,7 +119,7 @@ async def upload_scan(
     site_id: int = Form(...),
     wordpress_version_from: str = Form(...),
     wordpress_version_to: str = Form(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_scan_limits),
     db: Session = Depends(get_db)
 ):
     """
@@ -216,3 +232,72 @@ async def get_scan(
         )
 
     return scan
+ 
+
+@router.post("/estimate", status_code=status.HTTP_200_OK)
+async def estimate_scan_tokens(
+    file: UploadFile = File(...),
+    wordpress_version_from: str = Form(...),
+    wordpress_version_to: str = Form(...),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Estimate tokens and cost for a scan without actually running it
+    
+    This endpoint helps users understand:
+    - How many tokens the scan will use
+    - Estimated API cost
+    - Number of batches needed
+    - Context overflow risk
+    
+    Args:
+        file: ZIP file to analyze
+        wordpress_version_from: Starting WordPress version
+        wordpress_version_to: Target WordPress version
+        current_user: Current authenticated user
+        
+    Returns:
+        Token estimation details
+    """
+    import tempfile
+    
+    try:
+        # Create temporary directory for extraction
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            
+            # Save uploaded file
+            zip_path = temp_path / file.filename
+            with open(zip_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            
+            # Extract files
+            extract_dir = temp_path / "extracted"
+            extract_dir.mkdir(parents=True, exist_ok=True)
+            
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(extract_dir)
+            
+            # Find all PHP files
+            php_files = list(extract_dir.rglob("*.php"))
+            
+            # Initialize scanner
+            scanner = WordPressScanner(
+                version_from=wordpress_version_from,
+                version_to=wordpress_version_to
+            )
+            
+            # Get token estimate
+            estimate = scanner.estimate_total_tokens(php_files)
+            
+            return {
+                "success": True,
+                "estimate": estimate,
+                "message": f"Found {estimate['total_files']} PHP files requiring ~{estimate['total_tokens']} tokens across {estimate['estimated_batches']} batches"
+            }
+            
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Error estimating tokens: {str(e)}"
+        )

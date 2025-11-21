@@ -1,23 +1,32 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { LoginForm } from '@/components/forms/LoginForm'
-import { authApi } from '@/lib/api/auth'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { login } = useAuth()
   const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleLogin = async (data: { email: string; password: string }) => {
     try {
       setError(null)
-      await authApi.login(data)
-      router.push('/dashboard')
+      setIsLoading(true)
+      await login(data.email, data.password)
+
+      // Redirect to return URL or dashboard
+      const returnUrl = searchParams.get('returnUrl') || '/dashboard'
+      router.push(decodeURIComponent(returnUrl))
     } catch (err: any) {
       console.error('Login error:', err)
       setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
+    } finally {
+      setIsLoading(false)
     }
   }
 

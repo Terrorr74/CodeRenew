@@ -1,0 +1,68 @@
+version: '3.8'
+
+# ============================================
+# Staging Docker Compose Configuration
+# ============================================
+# This file extends docker-compose.yml for staging deployments
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+
+services:
+  db:
+    container_name: coderenew_db_staging
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-coderenew_staging}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-coderenew_staging}
+    volumes:
+      - postgres_data_staging:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"  # Different port to avoid conflicts
+
+  backend:
+    image: coderenew-backend:staging
+    container_name: coderenew_backend_staging
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --reload
+    volumes:
+      - backend_uploads_staging:/app/uploads
+    environment:
+      - DATABASE_URL=${DATABASE_URL:?DATABASE_URL is required}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY is required}
+      - STRIPE_SECRET_KEY=${STRIPE_TEST_SECRET_KEY:?STRIPE_TEST_SECRET_KEY is required}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_TEST_WEBHOOK_SECRET}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://staging.coderenew.com}
+
+  frontend:
+    image: coderenew-frontend:staging
+    container_name: coderenew_frontend_staging
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api-staging.coderenew.com}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-https://staging.coderenew.com}
+
+  nginx:
+    container_name: coderenew_nginx_staging
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+      - "8443:443"
+
+  redis:
+    container_name: coderenew_redis_staging
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6380:6379"
+
+volumes:
+  postgres_data_staging:
+  backend_uploads_staging:
+
+networks:
+  coderenew_network:
+    driver: bridge

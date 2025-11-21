@@ -13,9 +13,10 @@ export default function RegisterPage() {
   const handleRegister = async (data: { email: string; password: string }) => {
     try {
       setError(null)
-      await authApi.register(data)
-      // Auto login after register or redirect to login
-      router.push('/auth/login?registered=true')
+      const response = await authApi.register(data)
+      // Token is already set by authApi.register, user is now logged in
+      // Redirect to onboarding page
+      router.push('/onboarding')
     } catch (err: any) {
       console.error('Registration error:', err)
       setError(err.response?.data?.detail || 'Registration failed. Please try again.')

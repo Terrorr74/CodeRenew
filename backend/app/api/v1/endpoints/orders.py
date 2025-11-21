@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Header
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 import stripe
 import os
 from datetime import datetime
+import logging
 
 from app.db.session import get_db
 from app.models.order import Order
@@ -15,6 +16,13 @@ from app.core.config import settings
 
 # Initialize Stripe
 stripe.api_key = settings.STRIPE_SECRET_KEY
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# In-memory set to track processed webhook events (use Redis in production)
+# This provides basic idempotency protection
+processed_webhook_events = set()
 
 
 @router.post("/", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
@@ -133,21 +141,105 @@ async def list_orders(
 
 @router.post("/webhooks/stripe", status_code=status.HTTP_200_OK)
 async def stripe_webhook(
-    request: dict,
+    request: Request,
+    stripe_signature: Optional[str] = Header(None, alias="Stripe-Signature"),
     db: Session = Depends(get_db)
 ):
     """
-    Handle Stripe webhook events.
-    This endpoint should be called by Stripe when payment events occur.
+    Handle Stripe webhook events with signature verification
+
+    This endpoint receives and processes Stripe webhook events securely by:
+    1. Verifying the webhook signature to ensure requests are from Stripe
+    2. Implementing idempotency to prevent duplicate event processing
+    3. Handling checkout.session.completed events to update order status
+
+    SECURITY: This endpoint MUST verify webhook signatures to prevent
+    unauthorized requests from malicious actors.
+
+    Args:
+        request: FastAPI Request object containing the raw webhook payload
+        stripe_signature: Stripe-Signature header for verification
+        db: Database session
+
+    Returns:
+        Success status
+
+    Raises:
+        HTTPException: 400 if signature is invalid or missing
     """
-    # Note: In production, you should verify the webhook signature
-    # For now, this is a simplified implementation
+    # Get raw request body (required for signature verification)
+    try:
+        payload = await request.body()
+    except Exception as e:
+        logger.error(f"Error reading webhook payload: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid payload"
+        )
 
-    event_type = request.get("type")
+    # Verify webhook signature if STRIPE_WEBHOOK_SECRET is configured
+    if settings.STRIPE_WEBHOOK_SECRET:
+        if not stripe_signature:
+            logger.warning("Stripe webhook received without signature header")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing Stripe-Signature header"
+            )
 
+        try:
+            # Verify the webhook signature and construct the event
+            event = stripe.Webhook.construct_event(
+                payload=payload,
+                sig_header=stripe_signature,
+                secret=settings.STRIPE_WEBHOOK_SECRET
+            )
+        except ValueError as e:
+            # Invalid payload
+            logger.error(f"Invalid Stripe webhook payload: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid payload"
+            )
+        except stripe.error.SignatureVerificationError as e:
+            # Invalid signature
+            logger.error(f"Invalid Stripe webhook signature: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid signature"
+            )
+    else:
+        # DEVELOPMENT ONLY: Parse event without signature verification
+        # WARNING: This is insecure and should only be used in development
+        logger.warning("STRIPE_WEBHOOK_SECRET not configured - webhook signature verification disabled")
+        try:
+            event = stripe.Event.construct_from(
+                values=await request.json(),
+                key=settings.STRIPE_SECRET_KEY
+            )
+        except Exception as e:
+            logger.error(f"Error parsing webhook event: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid event data"
+            )
+
+    # Implement idempotency: check if we've already processed this event
+    event_id = event.get("id")
+    if event_id in processed_webhook_events:
+        logger.info(f"Duplicate webhook event {event_id} - already processed")
+        return {"status": "success", "message": "Event already processed"}
+
+    # Get event type and data
+    event_type = event.get("type")
+    event_data = event.get("data", {}).get("object", {})
+
+    logger.info(f"Processing Stripe webhook event: {event_type} (ID: {event_id})")
+
+    # Handle different event types
     if event_type == "checkout.session.completed":
-        session = request.get("data", {}).get("object", {})
-        session_id = session.get("id")
+        session_id = event_data.get("id")
+        payment_intent = event_data.get("payment_intent")
+        payment_status = event_data.get("payment_status")
 
         if session_id:
             # Update order payment status if it exists
@@ -156,9 +248,41 @@ async def stripe_webhook(
             ).first()
 
             if order:
-                order.payment_status = "paid"
-                order.stripe_payment_id = session.get("payment_intent")
-                order.updated_at = datetime.utcnow()
-                db.commit()
+                # Only update if payment was successful
+                if payment_status == "paid":
+                    order.payment_status = "paid"
+                    order.stripe_payment_id = payment_intent
+                    order.updated_at = datetime.utcnow()
+                    db.commit()
+                    logger.info(f"Updated order {order.id} payment status to paid")
+                else:
+                    logger.warning(f"Checkout session {session_id} completed but payment status is {payment_status}")
+            else:
+                logger.warning(f"Order not found for Stripe session {session_id}")
+
+    elif event_type == "payment_intent.payment_failed":
+        # Handle failed payments
+        payment_intent_id = event_data.get("id")
+        logger.error(f"Payment failed for payment intent {payment_intent_id}")
+
+        # Find and update order
+        order = db.query(Order).filter(
+            Order.stripe_payment_id == payment_intent_id
+        ).first()
+
+        if order:
+            order.payment_status = "failed"
+            order.updated_at = datetime.utcnow()
+            db.commit()
+            logger.info(f"Updated order {order.id} payment status to failed")
+
+    # Mark event as processed
+    processed_webhook_events.add(event_id)
+
+    # Clean up old event IDs to prevent memory leak (keep last 1000)
+    if len(processed_webhook_events) > 1000:
+        # In production, use Redis with TTL instead
+        processed_webhook_events.clear()
+        logger.info("Cleared processed webhook events cache")
 
     return {"status": "success"}

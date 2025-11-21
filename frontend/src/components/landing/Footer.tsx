@@ -44,23 +44,23 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Legal Links */}
+          {/* Account Links */}
           <div>
-            <h4 className="text-white font-semibold mb-4">Legal</h4>
+            <h4 className="text-white font-semibold mb-4">Account</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="/privacy" className="hover:text-white transition-colors">
-                  Privacy Policy
+                <a href="/auth/login" className="hover:text-white transition-colors">
+                  Sign In
                 </a>
               </li>
               <li>
-                <a href="/terms" className="hover:text-white transition-colors">
-                  Terms of Service
+                <a href="/auth/register" className="hover:text-white transition-colors">
+                  Register
                 </a>
               </li>
               <li>
-                <a href="/refund" className="hover:text-white transition-colors">
-                  Refund Policy
+                <a href="/dashboard" className="hover:text-white transition-colors">
+                  Dashboard
                 </a>
               </li>
             </ul>

@@ -1,3 +1,4 @@
+import LandingNav from '@/components/landing/LandingNav';
 import Hero from '@/components/landing/Hero';
 import ProblemSolution from '@/components/landing/ProblemSolution';
 import HowItWorks from '@/components/landing/HowItWorks';
@@ -8,6 +9,7 @@ import Footer from '@/components/landing/Footer';
 export default function LandingPage() {
   return (
     <main className="min-h-screen">
+      <LandingNav />
       <Hero />
       <ProblemSolution />
       <HowItWorks />
