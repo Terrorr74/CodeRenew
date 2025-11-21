@@ -47,3 +47,29 @@ class ScanResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# Async job schemas
+class AsyncScanCreate(BaseModel):
+    """Schema for starting an async scan job"""
+    site_id: int
+    wordpress_version_from: str = Field(..., min_length=1, max_length=20)
+    wordpress_version_to: str = Field(..., min_length=1, max_length=20)
+
+
+class AsyncScanJobResponse(BaseModel):
+    """Response when starting an async scan"""
+    job_id: str
+    scan_id: int
+    status: str = "queued"
+    message: str = "Scan job queued successfully"
+
+
+class ScanJobStatus(BaseModel):
+    """Schema for scan job status response"""
+    job_id: str
+    scan_id: int
+    status: str
+    progress: Optional[str] = None
+    result: Optional[dict] = None
+    error: Optional[str] = None

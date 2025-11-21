@@ -12,5 +12,9 @@
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "sequentialthinking",
+    "context7"
+  ]
 }

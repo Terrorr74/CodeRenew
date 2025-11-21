@@ -1,22 +1,36 @@
-version: '3.8'
+# ============================================
+# Base Docker Compose Configuration
+# ============================================
+# Contains common service definitions shared across all environments
+# Usage: This file is extended by environment-specific overrides
 
 services:
   # PostgreSQL Database
   db:
     image: postgres:15-alpine
-    container_name: coderenew_db
     environment:
-      POSTGRES_USER: coderenew
-      POSTGRES_PASSWORD: coderenew_dev_password
-      POSTGRES_DB: coderenew
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-coderenew}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-coderenew_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-coderenew}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U coderenew"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-coderenew}"]
       interval: 10s
       timeout: 5s
+      retries: 5
+    networks:
+      - coderenew_network
+
+  # Redis - Celery broker and caching
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
       retries: 5
     networks:
       - coderenew_network
@@ -26,23 +40,61 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: coderenew_backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    volumes:
-      - ./backend:/app
-      - backend_uploads:/app/uploads
-    ports:
-      - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://coderenew:coderenew_dev_password@db:5432/coderenew
-      - SECRET_KEY=your-secret-key-change-in-production
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-      - ALGORITHM=HS256
-      - ACCESS_TOKEN_EXPIRE_MINUTES=30
-      - UPLOAD_DIR=/app/uploads
+      DATABASE_URL: postgresql://${POSTGRES_USER:-coderenew}:${POSTGRES_PASSWORD:-coderenew_dev_password}@db:5432/${POSTGRES_DB:-coderenew}
+      REDIS_URL: redis://${REDIS_HOST:-redis}:6379/0
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      UPLOAD_DIR: /app/uploads
     depends_on:
       db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - coderenew_network
+
+  # Celery Worker
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.core.celery_app worker --loglevel=${CELERY_LOG_LEVEL:-info}
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-coderenew}:${POSTGRES_PASSWORD:-coderenew_dev_password}@db:5432/${POSTGRES_DB:-coderenew}
+      REDIS_URL: redis://${REDIS_HOST:-redis}:6379/0
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      CELERY_LOG_LEVEL: ${CELERY_LOG_LEVEL:-info}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - coderenew_network
+
+  # Celery Beat Scheduler
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.core.celery_app beat --loglevel=${CELERY_LOG_LEVEL:-info}
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-coderenew}:${POSTGRES_PASSWORD:-coderenew_dev_password}@db:5432/${POSTGRES_DB:-coderenew}
+      REDIS_URL: redis://${REDIS_HOST:-redis}:6379/0
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      CELERY_LOG_LEVEL: ${CELERY_LOG_LEVEL:-info}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - coderenew_network
@@ -52,18 +104,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      target: development
-    container_name: coderenew_frontend
-    command: npm run dev
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-    ports:
-      - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
     depends_on:
       - backend
     networks:
@@ -71,6 +114,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   backend_uploads:
 
 networks:

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Scan Complete - {{ company_name }}{% endblock %}
+
+{% block content %}
+<h2>Scan Complete</h2>
+
+<p>Your WordPress compatibility scan has finished processing.</p>
+
+{% if risk_level == "critical" %}
+<div class="alert alert-danger">
+{% elif risk_level == "high" %}
+<div class="alert alert-warning">
+{% elif risk_level == "medium" %}
+<div class="alert alert-info">
+{% else %}
+<div class="alert alert-success">
+{% endif %}
+    <p style="margin: 0 0 8px 0;">
+        <strong>Risk Level:</strong>
+        <span style="text-transform: uppercase; font-weight: bold;">{{ risk_level }}</span>
+    </p>
+    <p style="margin: 0;"><strong>Issues Found:</strong> {{ issue_count }}</p>
+</div>
+
+<p>View the full report to see detailed information about each issue and recommended fixes.</p>
+
+<div style="text-align: center;">
+    <a href="{{ scan_url }}" class="btn">View Results</a>
+</div>
+
+<p class="text-muted text-small">
+    You can also download a PDF report from the results page.
+</p>
+{% endblock %}

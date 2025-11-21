@@ -1,0 +1,64 @@
+# ============================================
+# Local Development Override
+# ============================================
+# Auto-loaded with docker-compose.yml for local development
+# Enables hot-reload, debug mode, and exposes ports
+
+services:
+  db:
+    container_name: coderenew_db_dev
+    ports:
+      - "5432:5432"
+
+  redis:
+    container_name: coderenew_redis_dev
+    ports:
+      - "6379:6379"
+
+  backend:
+    container_name: coderenew_backend_dev
+    build:
+      target: runtime
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+      - backend_uploads:/app/uploads
+    ports:
+      - "8000:8000"
+    environment:
+      DEBUG: "true"
+      LOG_LEVEL: DEBUG
+      ALLOWED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+
+  celery_worker:
+    container_name: coderenew_celery_worker_dev
+    command: celery -A app.core.celery_app worker --loglevel=debug
+    volumes:
+      - ./backend:/app
+    environment:
+      CELERY_LOG_LEVEL: debug
+
+  celery_beat:
+    container_name: coderenew_celery_beat_dev
+    command: celery -A app.core.celery_app beat --loglevel=debug
+    volumes:
+      - ./backend:/app
+    environment:
+      CELERY_LOG_LEVEL: debug
+
+  frontend:
+    container_name: coderenew_frontend_dev
+    build:
+      target: development
+    command: npm run dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+
+volumes:
+  backend_uploads:

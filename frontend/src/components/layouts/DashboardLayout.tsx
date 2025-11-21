@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { HomeIcon, PlusIcon, ClockIcon, UserIcon } from '@heroicons/react/24/outline'
+import { ErrorBoundary, GenericErrorFallback } from '@/components/errors'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -65,7 +66,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">{children}</main>
+      <main className="container mx-auto px-4 py-8">
+        <ErrorBoundary
+          FallbackComponent={GenericErrorFallback}
+          context={{ component: 'DashboardContent' }}
+        >
+          {children}
+        </ErrorBoundary>
+      </main>
     </div>
   )
 }

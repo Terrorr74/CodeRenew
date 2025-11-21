@@ -12,6 +12,9 @@ anthropic>=0.18.1
 python-dotenv>=1.0.1
 httpx>=0.26.0
 resend>=0.8.0
+jinja2>=3.1.0
+aiosmtplib>=3.0.0
+aioboto3>=12.0.0
 tiktoken>=0.5.0
 cachetools>=5.3.0
 slowapi>=0.1.9
@@ -22,6 +25,7 @@ reportlab>=4.0.0
 tenacity>=8.2.0
 pybreaker>=1.2.0
 redis>=5.0.0
+celery[redis]>=5.3.0
 
 # Testing
 pytest>=8.0.0

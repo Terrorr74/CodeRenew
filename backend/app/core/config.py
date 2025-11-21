@@ -3,7 +3,7 @@
 Application configuration settings
 Uses Pydantic Settings for environment variable management
 """
-from typing import List, Union, Any
+from typing import List, Union, Any, Literal
 from pydantic_settings import BaseSettings
 from pydantic import AnyHttpUrl, field_validator
 
@@ -32,10 +32,30 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str
     STRIPE_WEBHOOK_SECRET: str = ""  # Secret for webhook signature verification
 
-    # Email (Resend)
-    RESEND_API_KEY: str = ""
-    EMAILS_FROM_EMAIL: str = "onboarding@resend.dev"  # Default Resend testing email
+    # Email Configuration
+    EMAIL_PROVIDER: Literal["smtp", "sendgrid", "ses", "resend"] = "resend"
+    EMAILS_FROM_EMAIL: str = "onboarding@resend.dev"
     EMAILS_FROM_NAME: str = "CodeRenew"
+    FRONTEND_URL: str = "http://localhost:3000"
+
+    # Resend
+    RESEND_API_KEY: str = ""
+
+    # SMTP Settings (optional)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_USE_TLS: bool = True
+    SMTP_START_TLS: bool = False
+
+    # SendGrid (optional)
+    SENDGRID_API_KEY: str = ""
+
+    # AWS SES (optional)
+    AWS_SES_REGION: str = "us-east-1"
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
 
     # File Upload
     UPLOAD_DIR: str = "./uploads"

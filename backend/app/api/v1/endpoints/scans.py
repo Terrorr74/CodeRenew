@@ -13,10 +13,13 @@ import zipfile
 
 from app.core.config import settings
 from app.db.session import get_db
-from app.db.session import get_db
 from app.api.dependencies import get_current_user, check_scan_limits
-from app.schemas.scan import ScanCreate, ScanResponse
+from app.schemas.scan import (
+    ScanCreate, ScanResponse, AsyncScanJobResponse, ScanJobStatus
+)
 from app.models.user import User
+from app.tasks.scan_tasks import run_wordpress_scan
+from celery.result import AsyncResult
 from app.models.site import Site
 from app.models.scan import Scan, ScanStatus
 from app.models.scan_result import ScanResult
@@ -301,3 +304,131 @@ async def estimate_scan_tokens(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Error estimating tokens: {str(e)}"
         )
+
+
+# ============== Async Celery-based scan endpoints ==============
+
+@router.post("/async/start", response_model=AsyncScanJobResponse, status_code=status.HTTP_202_ACCEPTED)
+async def start_async_scan(
+    file: UploadFile = File(...),
+    site_id: int = Form(...),
+    wordpress_version_from: str = Form(...),
+    wordpress_version_to: str = Form(...),
+    current_user: User = Depends(check_scan_limits),
+    db: Session = Depends(get_db)
+):
+    """
+    Start an async WordPress scan using Celery.
+    Returns job ID immediately for status polling.
+    """
+    # Verify site belongs to user
+    site = db.query(Site).filter(
+        Site.id == site_id,
+        Site.user_id == current_user.id
+    ).first()
+
+    if not site:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Site not found"
+        )
+
+    # Create scan record
+    db_scan = Scan(
+        site_id=site_id,
+        user_id=current_user.id,
+        wordpress_version_from=wordpress_version_from,
+        wordpress_version_to=wordpress_version_to,
+        status=ScanStatus.PENDING
+    )
+    db.add(db_scan)
+    db.commit()
+    db.refresh(db_scan)
+
+    # Save uploaded file
+    upload_dir = Path(settings.UPLOAD_DIR)
+    scan_dir = upload_dir / str(current_user.id) / str(db_scan.id)
+    scan_dir.mkdir(parents=True, exist_ok=True)
+
+    file_path = scan_dir / file.filename
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Queue Celery task
+    task = run_wordpress_scan.delay(db_scan.id)
+
+    return AsyncScanJobResponse(
+        job_id=task.id,
+        scan_id=db_scan.id,
+        status="queued",
+        message="Scan job queued successfully"
+    )
+
+
+@router.get("/async/status/{job_id}", response_model=ScanJobStatus)
+async def get_async_scan_status(
+    job_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Check the status of an async scan job.
+    """
+    task_result = AsyncResult(job_id)
+
+    # Map Celery states to friendly status
+    status_map = {
+        "PENDING": "queued",
+        "STARTED": "running",
+        "SUCCESS": "completed",
+        "FAILURE": "failed",
+        "RETRY": "retrying",
+        "REVOKED": "cancelled",
+    }
+
+    status_str = status_map.get(task_result.state, task_result.state.lower())
+
+    result = None
+    error = None
+    scan_id = None
+
+    if task_result.successful():
+        result = task_result.result
+        scan_id = result.get("scan_id") if result else None
+    elif task_result.failed():
+        error = str(task_result.result)
+
+    # Try to get scan_id from result or find matching scan
+    if not scan_id and result:
+        scan_id = result.get("scan_id")
+
+    return ScanJobStatus(
+        job_id=job_id,
+        scan_id=scan_id or 0,
+        status=status_str,
+        result=result if task_result.successful() else None,
+        error=error
+    )
+
+
+@router.get("/async/results/{scan_id}", response_model=ScanResponse)
+async def get_async_scan_results(
+    scan_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get the results of a completed async scan.
+    """
+    scan = db.query(Scan).filter(
+        Scan.id == scan_id,
+        Scan.user_id == current_user.id
+    ).first()
+
+    if not scan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Scan not found"
+        )
+
+    return scan

@@ -1,37 +1,22 @@
-version: '3.8'
-
 # ============================================
-# Production Docker Compose Configuration
+# Production Environment Configuration
 # ============================================
-# This file extends docker-compose.yml for production deployments
-# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 services:
-  # PostgreSQL Database - Production Configuration
   db:
-    image: postgres:15-alpine
     container_name: coderenew_db_prod
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-coderenew}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-coderenew}
-      # Performance tuning
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
-    ports:
-      - "127.0.0.1:5432:5432"  # Bind to localhost only
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
-      - ./backups:/backups:ro  # Read-only access to backups
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-coderenew}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - coderenew_network
-    # Resource limits
+      - ./backups:/backups:ro
     deploy:
       resources:
         limits:
@@ -55,56 +40,50 @@ services:
       - "-c"
       - "wal_buffers=16MB"
       - "-c"
-      - "default_statistics_target=100"
-      - "-c"
       - "random_page_cost=1.1"
       - "-c"
       - "effective_io_concurrency=200"
       - "-c"
-      - "work_mem=2621kB"
-      - "-c"
-      - "min_wal_size=1GB"
-      - "-c"
-      - "max_wal_size=4GB"
-      - "-c"
-      - "log_destination=stderr"
-      - "-c"
-      - "logging_collector=off"
-      - "-c"
       - "log_statement=ddl"
 
-  # FastAPI Backend - Production Configuration
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: runtime
-    image: coderenew-backend:latest
-    container_name: coderenew_backend_prod
+  redis:
+    container_name: coderenew_redis_prod
     restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data_prod:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  backend:
+    container_name: coderenew_backend_prod
+    image: coderenew-backend:latest
+    restart: unless-stopped
+    build:
+      target: runtime
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
     volumes:
       - backend_uploads_prod:/app/uploads
       - ./logs:/app/logs
     environment:
-      - DATABASE_URL=${DATABASE_URL:?DATABASE_URL is required}
-      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY is required}
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:?STRIPE_SECRET_KEY is required}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:?STRIPE_WEBHOOK_SECRET is required}
-      - RESEND_API_KEY=${RESEND_API_KEY}
-      - ALGORITHM=HS256
-      - ACCESS_TOKEN_EXPIRE_MINUTES=30
-      - UPLOAD_DIR=/app/uploads
-      - DEBUG=False
-      - LOG_LEVEL=INFO
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://coderenew.com}
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - coderenew_network
-    # Resource limits
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY is required}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?STRIPE_SECRET_KEY is required}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?STRIPE_WEBHOOK_SECRET is required}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      DEBUG: "false"
+      LOG_LEVEL: INFO
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://coderenew.com}
     deploy:
       resources:
         limits:
@@ -119,28 +98,62 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    # Security: Don't expose port directly - use nginx
-    # ports:
-    #   - "8000:8000"
 
-  # Next.js Frontend - Production Configuration
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: production
-    image: coderenew-frontend:latest
-    container_name: coderenew_frontend_prod
+  celery_worker:
+    container_name: coderenew_celery_worker_prod
+    image: coderenew-backend:latest
     restart: unless-stopped
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4
+    volumes:
+      - backend_uploads_prod:/app/uploads
     environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.coderenew.com}
-      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-https://coderenew.com}
-    depends_on:
-      - backend
-    networks:
-      - coderenew_network
-    # Resource limits
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY is required}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "celery", "-A", "app.core.celery_app", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  celery_beat:
+    container_name: coderenew_celery_beat_prod
+    image: coderenew-backend:latest
+    restart: unless-stopped
+    command: celery -A app.core.celery_app beat --loglevel=info
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+  frontend:
+    container_name: coderenew_frontend_prod
+    image: coderenew-frontend:latest
+    restart: unless-stopped
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.coderenew.com}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://coderenew.com}
     deploy:
       resources:
         limits:
@@ -155,11 +168,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-    # Security: Don't expose port directly - use nginx
-    # ports:
-    #   - "3000:3000"
 
-  # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
     container_name: coderenew_nginx_prod
@@ -178,7 +187,6 @@ services:
       - frontend
     networks:
       - coderenew_network
-    # Resource limits
     deploy:
       resources:
         limits:
@@ -193,48 +201,9 @@ services:
       timeout: 10s
       retries: 3
 
-  # Redis - Caching layer
-  redis:
-    image: redis:7-alpine
-    container_name: coderenew_redis_prod
-    restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-    ports:
-      - "127.0.0.1:6379:6379"  # Bind to localhost only
-    volumes:
-      - redis_data_prod:/data
-    networks:
-      - coderenew_network
-    # Resource limits
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-        reservations:
-          cpus: '0.1'
-          memory: 64M
-    healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-
 volumes:
   postgres_data_prod:
-    driver: local
-  backend_uploads_prod:
-    driver: local
   redis_data_prod:
-    driver: local
+  backend_uploads_prod:
   nginx_cache:
-    driver: local
   nginx_logs:
-    driver: local
-
-networks:
-  coderenew_network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.25.0.0/16

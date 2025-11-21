@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ company_name }}{% endblock %}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f5;
+        }
+        .email-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .email-container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .email-header {
+            background-color: #2563EB;
+            color: #ffffff;
+            padding: 24px;
+            text-align: center;
+        }
+        .email-header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .email-body {
+            padding: 32px 24px;
+        }
+        .email-footer {
+            background-color: #f9fafb;
+            padding: 24px;
+            text-align: center;
+            font-size: 12px;
+            color: #6b7280;
+            border-top: 1px solid #e5e7eb;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #2563EB;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 16px 0;
+        }
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+        .btn-danger {
+            background-color: #dc2626;
+        }
+        .alert {
+            padding: 16px;
+            border-radius: 6px;
+            margin: 16px 0;
+        }
+        .alert-info {
+            background-color: #eff6ff;
+            border-left: 4px solid #2563EB;
+        }
+        .alert-warning {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+        }
+        .alert-danger {
+            background-color: #fee2e2;
+            border-left: 4px solid #dc2626;
+        }
+        .alert-success {
+            background-color: #d1fae5;
+            border-left: 4px solid #10b981;
+        }
+        h2 {
+            color: #111827;
+            margin-top: 0;
+        }
+        p {
+            margin: 0 0 16px 0;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .text-muted {
+            color: #6b7280;
+        }
+        .text-small {
+            font-size: 14px;
+        }
+        .link-text {
+            word-break: break-all;
+            color: #2563EB;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <div class="email-container">
+            <div class="email-header">
+                <h1>{{ company_name }}</h1>
+            </div>
+            <div class="email-body">
+                {% block content %}{% endblock %}
+            </div>
+            <div class="email-footer">
+                <p>&copy; {{ company_name }}. All rights reserved.</p>
+                <p>
+                    Questions? Contact us at
+                    <a href="mailto:{{ support_email }}">{{ support_email }}</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

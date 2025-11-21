@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to {{ company_name }}{% endblock %}
+
+{% block content %}
+<h2>Welcome to {{ company_name }}!</h2>
+
+<p>Hi {{ name }},</p>
+
+<p>Thank you for creating an account with {{ company_name }}. We're excited to have you on board!</p>
+
+<p>{{ company_name }} helps you scan your WordPress plugins and themes for compatibility issues with the latest PHP versions and WordPress releases.</p>
+
+<div class="alert alert-info">
+    <strong>Getting Started:</strong>
+    <ul>
+        <li>Upload your WordPress plugin or theme ZIP file</li>
+        <li>Our AI-powered scanner analyzes your code</li>
+        <li>Get detailed reports with fix recommendations</li>
+    </ul>
+</div>
+
+<div style="text-align: center;">
+    <a href="{{ frontend_url }}/dashboard" class="btn">Go to Dashboard</a>
+</div>
+
+<p class="text-muted text-small">
+    If you have any questions or need assistance, don't hesitate to reach out to our support team.
+</p>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Security Alert - {{ company_name }}{% endblock %}
+
+{% block content %}
+<h2 style="color: #dc2626;">Security Alert: Account Locked</h2>
+
+<p>Your {{ company_name }} account has been temporarily locked due to multiple failed login attempts.</p>
+
+<div class="alert alert-danger">
+    <p style="margin: 0;"><strong>Lockout Duration:</strong> {{ lockout_minutes }} minutes</p>
+</div>
+
+<h3>What happened?</h3>
+<p>We detected multiple consecutive failed login attempts on your account. To protect your security, we've temporarily locked your account.</p>
+
+<h3>What should you do?</h3>
+<ul>
+    <li>Wait {{ lockout_minutes }} minutes and try logging in again</li>
+    <li>Make sure you're using the correct password</li>
+    <li>If you forgot your password, use the "Forgot Password" link on the login page</li>
+    <li>If you didn't attempt to log in, your account credentials may be compromised - please reset your password immediately</li>
+</ul>
+
+<div style="text-align: center;">
+    <a href="{{ frontend_url }}/auth/forgot-password" class="btn btn-danger">Reset Password</a>
+</div>
+
+<p class="text-muted text-small" style="margin-top: 24px;">
+    If you have concerns about your account security, please contact our support team immediately.
+</p>
+{% endblock %}
