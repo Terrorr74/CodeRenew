@@ -1,0 +1,57 @@
+repos:
+  # Backend - Python
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        files: ^backend/
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        files: ^backend/app/
+        additional_dependencies:
+          - pydantic>=2.6.0
+          - fastapi>=0.109.0
+          - types-cachetools
+
+  # Frontend - TypeScript/JavaScript
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.15.0
+    hooks:
+      - id: eslint
+        files: ^frontend/.*\.(ts|tsx|js|jsx)$
+        types: [file]
+        additional_dependencies:
+          - eslint@9.15.0
+          - eslint-config-next@16.0.3
+          - typescript@5.3.3
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.3.3
+    hooks:
+      - id: prettier
+        files: ^frontend/.*\.(ts|tsx|js|jsx|json|css|md)$
+        additional_dependencies:
+          - prettier@3.3.3
+          - prettier-plugin-tailwindcss@0.6.8
+
+  # General
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files

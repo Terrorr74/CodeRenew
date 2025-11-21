@@ -1,15 +1,29 @@
 """
 Claude API Client
-Handles communication with Anthropic's Claude API
+Handles communication with Anthropic's Claude API with retry logic and circuit breaker
 """
 from typing import Optional, List, Dict, Any
+import logging
 import anthropic
-import json
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log,
+    RetryError
+)
+import pybreaker
+
 from app.core.config import settings
+from app.core.circuit_breaker import claude_circuit_breaker
+from app.core.exceptions import ClaudeAPIError, CircuitBreakerOpenError
+
+logger = logging.getLogger(__name__)
 
 
 class ClaudeClient:
-    """Client for interacting with Claude API"""
+    """Client for interacting with Claude API with resilience patterns"""
 
     def __init__(self, api_key: Optional[str] = None):
         """
@@ -20,8 +34,114 @@ class ClaudeClient:
         """
         self.api_key = api_key or settings.ANTHROPIC_API_KEY
         self.client = anthropic.Anthropic(api_key=self.api_key)
+        self.max_retries = settings.SCANNER_MAX_RETRIES
 
+    def _is_retryable_error(self, exc: Exception) -> bool:
+        """Check if error is retryable"""
+        if isinstance(exc, anthropic.RateLimitError):
+            return True
+        if isinstance(exc, anthropic.APIConnectionError):
+            return True
+        if isinstance(exc, anthropic.InternalServerError):
+            return True
+        if isinstance(exc, anthropic.APIStatusError):
+            return exc.status_code >= 500
+        return False
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=30),
+        retry=retry_if_exception_type((
+            anthropic.RateLimitError,
+            anthropic.APIConnectionError,
+            anthropic.InternalServerError,
+        )),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True
+    )
+    def _call_claude_api(
+        self,
+        messages: List[Dict],
+        tools: Optional[List[Dict]] = None,
+        tool_choice: Optional[Dict] = None,
+        max_tokens: int = 8192,
+        temperature: float = 0
+    ) -> anthropic.types.Message:
+        """
+        Make API call to Claude with retry logic
+
+        Args:
+            messages: List of message dicts
+            tools: Optional tools for tool use
+            tool_choice: Optional tool choice config
+            max_tokens: Max tokens for response
+            temperature: Temperature setting
+
+        Returns:
+            Claude API message response
+
+        Raises:
+            ClaudeAPIError: If API call fails after retries
+        """
+        try:
+            kwargs = {
+                "model": settings.CLAUDE_MODEL,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "messages": messages
+            }
+            if tools:
+                kwargs["tools"] = tools
+            if tool_choice:
+                kwargs["tool_choice"] = tool_choice
+
+            return self.client.messages.create(**kwargs)
+
+        except anthropic.AuthenticationError as e:
+            logger.error(f"Claude API authentication error: {e}")
+            raise ClaudeAPIError("Invalid API key", {"type": "authentication"})
+
+        except anthropic.BadRequestError as e:
+            logger.error(f"Claude API bad request: {e}")
+            raise ClaudeAPIError(f"Bad request: {str(e)}", {"type": "bad_request"})
+
+        except anthropic.RateLimitError as e:
+            logger.warning(f"Claude API rate limited: {e}")
+            raise  # Let tenacity retry
+
+        except anthropic.APIConnectionError as e:
+            logger.warning(f"Claude API connection error: {e}")
+            raise  # Let tenacity retry
+
+        except anthropic.InternalServerError as e:
+            logger.warning(f"Claude API server error: {e}")
+            raise  # Let tenacity retry
+
+        except Exception as e:
+            logger.error(f"Unexpected Claude API error: {type(e).__name__}: {e}")
+            raise ClaudeAPIError(f"Unexpected error: {str(e)}")
+
+    def _call_with_circuit_breaker(
+        self,
+        messages: List[Dict],
+        tools: Optional[List[Dict]] = None,
+        tool_choice: Optional[Dict] = None,
+        max_tokens: int = 8192,
+        temperature: float = 0
+    ) -> anthropic.types.Message:
+        """Call Claude API with circuit breaker protection"""
+        try:
+            return claude_circuit_breaker.call(
+                self._call_claude_api,
+                messages=messages,
+                tools=tools,
+                tool_choice=tool_choice,
+                max_tokens=max_tokens,
+                temperature=temperature
+            )
+        except pybreaker.CircuitBreakerError:
+            logger.error("Circuit breaker open for Claude API")
+            raise CircuitBreakerOpenError("claude_api")
 
     def _build_analysis_prompt(
         self,
@@ -97,55 +217,55 @@ Provide your analysis in the following valid JSON format ONLY. Do not include an
     ) -> Dict[str, Any]:
         """
         Analyze multiple WordPress files using Claude's tool use for structured output
-        
+        with retry logic and circuit breaker protection
+
         Args:
             files: List of file dictionaries
             version_from: Starting WordPress version
             version_to: Target WordPress version
             context: Additional context
-            
+
         Returns:
             Validated analysis results
         """
         from .validation_tools import get_compatibility_analysis_tool
-        
+
         prompt = self._build_batch_analysis_prompt(files, version_from, version_to, context, use_tool=True)
         tool = get_compatibility_analysis_tool()
-        
+
         try:
-            message = self.client.messages.create(
-                model=settings.CLAUDE_MODEL,
-                max_tokens=8192,
-                temperature=0,
+            message = self._call_with_circuit_breaker(
+                messages=[{"role": "user", "content": prompt}],
                 tools=[tool],
                 tool_choice={"type": "tool", "name": tool["name"]},
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
+                max_tokens=8192,
+                temperature=0
             )
-            
+
             # Extract tool use content
             for content in message.content:
                 if content.type == "tool_use" and content.name == tool["name"]:
                     return content.input
-            
+
             # Fallback if no tool use found (shouldn't happen with tool_choice)
-            print("Warning: No tool use found in response")
+            logger.warning("No tool use found in response")
             return {
                 "issues": [],
                 "summary": "Analysis failed to produce structured output",
                 "risk_level": "unknown",
                 "recommendations": []
             }
-            
+
+        except CircuitBreakerOpenError:
+            raise
+        except ClaudeAPIError:
+            raise
+        except RetryError as e:
+            logger.error(f"Claude API failed after retries: {e}")
+            raise ClaudeAPIError(f"API failed after {self.max_retries} retries")
         except Exception as e:
-            print(f"Error calling Claude API with tool: {e}")
-            return {
-                "issues": [],
-                "summary": f"Error analyzing batch: {str(e)}",
-                "recommendations": [],
-                "risk_level": "unknown"
-            }
+            logger.error(f"Error calling Claude API with tool: {e}")
+            raise ClaudeAPIError(f"Error analyzing batch: {str(e)}")
 
     def _build_batch_analysis_prompt(
         self,
@@ -179,9 +299,9 @@ Provide your analysis in the following valid JSON format ONLY. Do not include an
 {content}
 ```
 """)
-        
+
         files_text = "\n".join(files_section)
-        
+
         base_prompt = f"""
 You are a WordPress compatibility expert. Analyze the following WordPress theme/plugin files for compatibility issues when upgrading from WordPress {version_from} to {version_to}.
 

@@ -14,7 +14,9 @@ from app.api.v1.api import api_router
 from app.db.session import engine
 from app.models import base  # Import all models for Alembic
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.middleware.error_handler import register_exception_handlers
 from app.core.rate_limiting import limiter
+from app.core.cache import close_redis
 
 
 @asynccontextmanager
@@ -32,6 +34,7 @@ async def lifespan(app: FastAPI):
 
     # Shutdown logic
     print(f"Shutting down {settings.PROJECT_NAME}")
+    await close_redis()
 
 
 # Create database tables (in production, use Alembic migrations)
@@ -86,6 +89,9 @@ async def health_check():
         }
     )
 
+
+# Register exception handlers
+register_exception_handlers(app)
 
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)

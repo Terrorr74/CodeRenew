@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
 
+    # Redis Settings
+    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_ENABLED: bool = True
+    REDIS_MAX_CONNECTIONS: int = 20
+    REDIS_DEFAULT_TTL: int = 300  # 5 minutes
+
     class Config:
         env_file = ".env"
         case_sensitive = True
