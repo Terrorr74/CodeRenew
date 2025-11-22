@@ -34,6 +34,15 @@ export const toolIndex: ToolCategory[] = [
     ]
   },
   {
+    name: "perplexity",
+    tools: [
+      { name: "perplexity_search", description: "Web search with ranked results and metadata", server: "perplexity", path: "./generated/perplexity/perplexity_search.ts" },
+      { name: "perplexity_ask", description: "Conversational AI with real-time web search (sonar-pro)", server: "perplexity", path: "./generated/perplexity/perplexity_ask.ts" },
+      { name: "perplexity_research", description: "Deep research with citations (sonar-deep-research)", server: "perplexity", path: "./generated/perplexity/perplexity_research.ts" },
+      { name: "perplexity_reason", description: "Advanced reasoning (sonar-reasoning-pro)", server: "perplexity", path: "./generated/perplexity/perplexity_reason.ts" },
+    ]
+  },
+  {
     name: "github",
     tools: [
       { name: "get_me", description: "Get authenticated user info", server: "github", path: "./generated/github/get_me.ts" },

@@ -64,16 +64,49 @@ for (const issue of issues) {
 // Total: ~800 tokens, 60% faster
 ```
 
+## Programmatic MCP Access
+
+The MCP Client allows direct connection to MCP servers without Claude's integration:
+
+```typescript
+import { createContext7Client, createGitHubClient, createSequentialThinkingClient } from './mcp-tools';
+
+// Connect to any MCP server
+const client = createContext7Client();
+await client.connect();
+
+// Call tools programmatically
+const docs = await client.callTool({
+  name: 'get-library-docs',
+  arguments: { context7CompatibleLibraryID: '/vercel/next.js' }
+});
+
+client.disconnect();
+```
+
+**Benefits:**
+- Zero context usage (tools not loaded into Claude)
+- Programmatic control over MCP servers
+- Compose multi-tool workflows in code
+- Use in scripts, CI/CD, or backend services
+
+See `examples/client-usage.ts` for complete examples.
+
 ## File Structure
 ```
 mcp-tools/
   index.ts              # Main exports
+  client/
+    mcp-client.ts       # Direct MCP server connection
   registry/
     tool-index.ts       # Lightweight tool catalog
     tool-loader.ts      # On-demand loader
   generated/
     github/             # Full tool definitions
     context7/
+    sequential-thinking/
   executor/
     code-executor.ts    # Code composition helpers
+  examples/
+    client-usage.ts     # Usage examples
 ```

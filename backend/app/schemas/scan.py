@@ -27,6 +27,11 @@ class ScanResultResponse(BaseModel):
     description: str
     recommendation: Optional[str] = None
     code_snippet: Optional[str] = None
+    # EPSS fields
+    cve_id: Optional[str] = None
+    epss_score: Optional[float] = None
+    epss_percentile: Optional[float] = None
+    epss_updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

@@ -2,7 +2,7 @@
 ScanResult model
 Represents individual findings from a scan
 """
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, Enum, Float, DateTime
 from sqlalchemy.orm import relationship
 import enum
 
@@ -43,6 +43,12 @@ class ScanResult(Base):
     description = Column(Text, nullable=False)
     recommendation = Column(Text, nullable=True)
     code_snippet = Column(Text, nullable=True)
+
+    # EPSS (Exploit Prediction Scoring System) fields
+    cve_id = Column(String, nullable=True, index=True)
+    epss_score = Column(Float, nullable=True)
+    epss_percentile = Column(Float, nullable=True)
+    epss_updated_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     scan = relationship("Scan", back_populates="results")

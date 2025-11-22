@@ -24,6 +24,9 @@ export { loadTool, loadTools, generateMinimalContext, clearCache } from './regis
 // Code executor
 export { analyzeToolUsage, generateCodeContext, createExecutionPlan, getToolFileTree, findTools } from './executor/code-executor';
 
+// MCP Client - Direct connection to MCP servers
+export { MCPClient, createContext7Client, createGitHubClient, createSequentialThinkingClient, createPerplexityClient } from './client/mcp-client';
+
 /**
  * Quick Reference - Available Tool Categories:
  *
