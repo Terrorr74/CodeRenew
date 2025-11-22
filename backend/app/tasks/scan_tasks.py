@@ -122,6 +122,37 @@ def run_wordpress_scan(self, scan_id: int) -> dict:
                 )
         except Exception as e:
             print(f"Email notification failed: {e}")
+        
+        # Trigger webhooks for scan completion
+        try:
+            from app.services.webhooks.webhook_service import WebhookService
+            webhook_service = WebhookService(db)
+            
+            # Prepare webhook payload
+            webhook_payload = {
+                'scan_id': str(scan.id),
+                'site_name': scan.site.name if scan.site else 'Unknown Site',
+                'risk_level': scan.risk_level.value if scan.risk_level else 'unknown',
+                'issues_found': len(issues),
+                'completed_at': scan.completed_at.isoformat() if scan.completed_at else datetime.utcnow().isoformat(),
+                'dashboard_url': f"http://localhost:3000/scans/{scan.id}"  # TODO: Use actual frontend URL
+            }
+            
+            # Trigger webhooks asynchronously
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(
+                    webhook_service.trigger_webhooks(
+                        user_id=str(scan.user_id),
+                        event_type='scan_completed',
+                        payload=webhook_payload
+                    )
+                )
+            finally:
+                loop.close()
+        except Exception as e:
+            print(f"Webhook notification failed: {e}")
 
         return {
             "scan_id": scan_id,

@@ -51,6 +51,7 @@ class User(Base):
     # Relationships
     sites = relationship("Site", back_populates="user", cascade="all, delete-orphan")
     scans = relationship("Scan", back_populates="user", cascade="all, delete-orphan")
+    webhook_configs = relationship("WebhookConfig", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email})>"

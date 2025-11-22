@@ -14,7 +14,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from app.core.config import settings
 from app.models.base import Base
 # Import all models to ensure they're registered with Base
-from app.models import user, site, scan, scan_result
+from app.models import user, site, scan, scan_result, webhook_config, webhook_delivery
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

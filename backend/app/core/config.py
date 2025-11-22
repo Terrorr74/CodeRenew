@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     # Stripe
     STRIPE_SECRET_KEY: str
     STRIPE_WEBHOOK_SECRET: str = ""  # Secret for webhook signature verification
+    
+    # Webhook Encryption
+    WEBHOOK_ENCRYPTION_KEY: str = ""  # Fernet key for encrypting webhook URLs
 
     # Email Configuration
     EMAIL_PROVIDER: Literal["smtp", "sendgrid", "ses", "resend"] = "resend"

@@ -20,6 +20,7 @@ cachetools>=5.3.0
 slowapi>=0.1.9
 stripe>=7.0.0
 reportlab>=4.0.0
+cryptography>=42.0.0
 
 # Resilience & Caching
 tenacity>=8.2.0

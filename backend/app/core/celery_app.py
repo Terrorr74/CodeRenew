@@ -8,7 +8,7 @@ celery_app = Celery(
     "coderenew",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
-    include=["app.tasks.scan_tasks"],
+    include=["app.tasks.scan_tasks", "app.tasks.epss_tasks", "app.tasks.webhook_tasks"],
 )
 
 celery_app.conf.update(
